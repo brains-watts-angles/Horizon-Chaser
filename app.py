@@ -80,11 +80,12 @@ net_sales_price = ESTIMATED_HOUSE_VALUE - closing_costs
 # 2. Taxable Gain Calculation
 # You only pay Capital Gains on the PROFIT, not the whole check
 TAX_ON_PROFIT_PERCENT = 0.15  # 0% if you've lived there 2 of last 5 years
-ORIGINAL_PURCHASE_PRICE = 200000.00 # Placeholder: What you bought it for
+ORIGINAL_PURCHASE_PRICE = 184500 # Placeholder: What you bought it for
 total_gain = net_sales_price - ORIGINAL_PURCHASE_PRICE
 
 # 3. The Tax Hit
 # Depreciation Recapture is a "catch-up" tax on what you've claimed over the years
+ESTIMATED_DEPRECIATION_RECAPTURE = 70000
 depreciation_tax = ESTIMATED_DEPRECIATION_RECAPTURE * 0.25
 capital_gains_tax = total_gain * TAX_ON_PROFIT_PERCENT
 total_tax_hit = depreciation_tax + capital_gains_tax
@@ -97,6 +98,7 @@ raw_cash_remaining = (
     - HELOC_BALANCE 
     - HVAC_BALANCE 
     - FURNISHMENTS 
+    - TSP_LOAN_BALANCE
     - total_tax_hit
 )
 
@@ -139,11 +141,3 @@ independent_monthly_net = (
 
 
 ####Sample code below this line####
-
-
-
-
-# ==========================================
-# 8. LOGIC: TAXES & DEPRECIATION RECAPTURE
-# ==========================================
-
