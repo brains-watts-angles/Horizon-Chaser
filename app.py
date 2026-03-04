@@ -27,8 +27,26 @@ ANNUAL_RENT_INCREASE = 0.02     # 2% growth in rent prices
 MONTHLY_MAINTENANCE_RESERVE = 740.00 # Your ~$8,800/year "burn"
 
 # The "Life" Cost
-MONTHLY_RENTAL_LABOR_HOURS = 10.0 # Time spent on property/tenants
 HOURLY_RATE = 31.43              # From your pay stub
+
+# Travel Logistics
+TRIPS_PER_YEAR = 4               
+MILES_ROUND_TRIP = 500           
+IRS_MILEAGE_RATE = 0.67          
+LODGING_PER_TRIP = 150.00        
+MEALS_PER_TRIP = 50.00           
+
+# Calculate Monthly Money Drain
+ANNUAL_TRAVEL_COST = ((MILES_ROUND_TRIP * IRS_MILEAGE_RATE) + LODGING_PER_TRIP + MEALS_PER_TRIP) * TRIPS_PER_YEAR
+MONTHLY_TRAVEL_BURDEN = ANNUAL_TRAVEL_COST / 12
+
+# Calculate Monthly Time Drain
+DRIVE_TIME_PER_TRIP = 12.0
+LABOR_TIME_PER_TRIP = 10.0  # Weekend warrior hours
+ADMIN_TIME_PER_MONTH = 3.0  # Phone calls, bills, etc.
+
+TOTAL_MONTHLY_RENTAL_LABOR_HOURS = ((DRIVE_TIME_PER_TRIP + LABOR_TIME_PER_TRIP) * TRIPS_PER_YEAR / 12) + ADMIN_TIME_PER_MONTH
+
 
 # ==========================================
 # 3. THE DEBT MONSTERS
@@ -37,6 +55,25 @@ HOURLY_RATE = 31.43              # From your pay stub
 # Mortgage Details
 MORTGAGE_BALANCE = 143000.00
 MORTGAGE_RATE = 0.0325
+
+# Starting PITI Breakdown (Found on your statement)
+# Separating these allows us to track 'Asset Growth' vs 'Pure Expense'
+STARTING_MONTHLY_PRINCIPAL = 0.00  # Asset Building
+STARTING_MONTHLY_INTEREST = 0.00   # Pure Cost (The "Burn")
+STARTING_MONTHLY_TAX = 0.00        # Pure Cost
+STARTING_MONTHLY_INSURANCE = 0.00  # Pure Cost
+
+# Derived Variable for the Monthly Budget
+TOTAL_MONTHLY_PITI_PAYMENT = (
+    STARTING_MONTHLY_PRINCIPAL + 
+    STARTING_MONTHLY_INTEREST + 
+    STARTING_MONTHLY_TAX + 
+    STARTING_MONTHLY_INSURANCE
+)
+
+# The Logic will derive the 'Principal & Interest' portion:
+# STARTING_P_AND_I = TOTAL_MONTHLY_PITI_PAYMENT - STARTING_MONTHLY_TAX - STARTING_MONTHLY_INSURANCE
+
 
 # HELOC: High interest
 HELOC_BALANCE = 40000.00
@@ -73,25 +110,28 @@ SP500_ANNUAL_RETURN = 0.10    # 10% historical average
 # ==========================================
 
 # 1. The Immediate "Haircut"
-SELLING_COSTS_PERCENT = 0.08  # 8% for Realtor fees, repairs to sell, etc.
+SELLING_COSTS_PERCENT = 0.08  
 closing_costs = ESTIMATED_HOUSE_VALUE * SELLING_COSTS_PERCENT
 net_sales_price = ESTIMATED_HOUSE_VALUE - closing_costs
 
 # 2. Taxable Gain Calculation
-# You only pay Capital Gains on the PROFIT, not the whole check
-TAX_ON_PROFIT_PERCENT = 0.15  # 0% if you've lived there 2 of last 5 years
-ORIGINAL_PURCHASE_PRICE = 184500 # Placeholder: What you bought it for
-total_gain = net_sales_price - ORIGINAL_PURCHASE_PRICE
+TAX_ON_PROFIT_PERCENT = 0.15  
+ORIGINAL_PURCHASE_PRICE = 184500 
+ESTIMATED_DEPRECIATION_RECAPTURE = 70000
+
+# Step A: Calculate the 'Total Profit'
+total_profit = net_sales_price - ORIGINAL_PURCHASE_PRICE
+
+# Step B: Split the profit into the two tax buckets
+# We subtract recapture from profit so we don't double-tax those dollars
+capital_gains_portion = max(0, total_profit - ESTIMATED_DEPRECIATION_RECAPTURE)
 
 # 3. The Tax Hit
-# Depreciation Recapture is a "catch-up" tax on what you've claimed over the years
-ESTIMATED_DEPRECIATION_RECAPTURE = 70000
 depreciation_tax = ESTIMATED_DEPRECIATION_RECAPTURE * 0.25
-capital_gains_tax = total_gain * TAX_ON_PROFIT_PERCENT
+capital_gains_tax = capital_gains_portion * TAX_ON_PROFIT_PERCENT
 total_tax_hit = depreciation_tax + capital_gains_tax
 
 # 4. Debt Clearance
-# This is where we kill the monsters to find the "Raw Cash" left
 raw_cash_remaining = (
     net_sales_price 
     - MORTGAGE_BALANCE 
@@ -102,35 +142,37 @@ raw_cash_remaining = (
     - total_tax_hit
 )
 
-# 5. The "Life" Reserves
-# Money for the river raft and the emergency fund
-CASH_TO_KEEP_ON_HAND = 20000.00 # Placeholder
+# 5. The "Life" Reserves (Raft, Emergency, etc.)
+CASH_TO_KEEP_ON_HAND = 20000.00 
 
-# 6. THE FINAL SEED
-# This is the number that actually goes into the S&P 500
+# 6. THE FINAL SEED for S&P 500
 final_sp500_seed = raw_cash_remaining - CASH_TO_KEEP_ON_HAND
 
+# ==========================================
+# 6. LOGIC: MONTHLY CASH FLOW (NET TAKE-HOME)
+# ==========================================
 
-# ==========================================
-# 7. LOGIC: MONTHLY CASH FLOW (NET TAKE-HOME)
-# ==========================================
+# Step 1: Calculate the 'Labor Cost' in dollars
+# This translates your weekend warrior time into a dollar amount
+monthly_labor_value = TOTAL_MONTHLY_RENTAL_LABOR_HOURS * HOURLY_RATE
 
 # Scenario A: The "Status Quo" (Keep)
-# We calculate what actually hits your pocket after ALL house and debt costs
+# We subtract the cash out AND the value of your time
 current_monthly_net = (
     MONTHLY_GROSS 
     - MANDATORY_DEDUCTIONS 
     - TSP_LOAN_PAYMENT 
     - HELOC_MONTHLY_PAYMENT
     - HVAC_MONTHLY_PAYMENT
-    - MORTGAGE_PITI           # Placeholder for P+I+T+I
+    - TOTAL_MONTHLY_PITI_PAYMENT 
     - MONTHLY_MAINTENANCE_RESERVE
+    - MONTHLY_TRAVEL_BURDEN
+    - monthly_labor_value         # <--- The "Time Tax"
     + MONTHLY_RENT_INCOME
 )
 
 # Scenario B: The "Independent" (Sell)
-# No more rental income, but no more debt or house costs
-# You pay your own rent and utilities now
+# No labor value subtracted here because your time is now YOURS
 independent_monthly_net = (
     MONTHLY_GROSS 
     - MANDATORY_DEDUCTIONS 
@@ -139,5 +181,17 @@ independent_monthly_net = (
     - INDEPENDENCE_FOOD_SURPLUS
 )
 
+# ==========================================
+# 7. LOGIC: THE "SANITY" METRIC (HOURLY LANDLORD WAGE)
+# ==========================================
+
+# Step 1: Calculate the 'Take-Home' gap
+# This is how much MORE (or less) you make by keeping the rental vs. selling it
+monthly_profit_gap = current_monthly_net - independent_monthly_net
+
+# Step 2: Calculate your Landlord Hourly Wage
+# Using the new total hours including the drive from Salmon
+landlord_hourly_wage = monthly_profit_gap / max(0.01, TOTAL_MONTHLY_RENTAL_LABOR_HOURS)
 
 ####Sample code below this line####
+
