@@ -71,7 +71,7 @@ total_tax_hit = ((net_sales_price - 184500 - 70000) * 0.15) + (70000 * 0.25)
 final_sp500_seed = net_sales_price - MORTGAGE_BALANCE - HELOC_BALANCE - HVAC_BALANCE - FURNISHMENTS - TSP_LOAN_BALANCE - total_tax_hit - 20000
 
 # --- THE REALITY CHECK (CASH FLOW) ---
-# This is what leaves your bank account every month
+# Total cash leaving your bank account every month
 total_house_outflow = (
     TOTAL_MONTHLY_PITI_PAYMENT + 
     HELOC_MONTHLY_PAYMENT + 
@@ -80,7 +80,7 @@ total_house_outflow = (
     MONTHLY_TRAVEL_BURDEN
 )
 
-# Spendable Cash Flow (The -$-309.33 you saw)
+# Spendable Cash Flow (The true liquid net)
 actual_monthly_cash_flow = MONTHLY_RENT_INCOME - total_house_outflow
 
 # Independent Life Cost [cite: 2026-02-24]
@@ -88,7 +88,7 @@ actual_monthly_cash_flow = MONTHLY_RENT_INCOME - total_house_outflow
 independent_costs = 1800.00 + 250.00 + 200.00
 
 # The "Honest" Wage
-# Difference between (Job + Rental Cash) and (Job - Independent Life)
+# Comparing your 'Rental Life' spendable cash to 'Independent Life' spendable cash
 cash_gap = actual_monthly_cash_flow + independent_costs
 honest_cash_wage = cash_gap / max(0.01, TOTAL_MONTHLY_RENTAL_LABOR_HOURS)
 
@@ -154,38 +154,25 @@ st.title("The Sanity Simulator: Salmon to Boise")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.metric("Actual Cash Flow", f"${actual_monthly_cash_flow:,.2f}", 
-              help="Liquid cash left after ALL house expenses and travel.")
+    st.metric(
+        label="Monthly Cash Flow", 
+        value=f"${actual_monthly_cash_flow:,.2f}", 
+        help="Liquid cash after ALL house expenses. Negative means you are paying to own it."
+    )
 
 with col2:
-    st.metric("Monthly Net Gap", f"${cash_gap:,.2f}",
-              help="Difference in spendable cash between keeping and selling.")
+    st.metric(
+        label="Monthly Net Gap", 
+        value=f"${cash_gap:,.2f}",
+        help="Spendable cash difference between keeping and selling (includes rent you save)."
+    )
 
 with col3:
-    st.metric("Cash-Based Wage", f"${honest_cash_wage:,.2f}/hr", 
-              delta=f"{honest_cash_wage - HOURLY_RATE:,.2f} vs Job")
-
-if payoff_year: st.success(f"🏠 Mortgage Free in {payoff_year:.1f} years.")
-
-st.subheader("Total Wealth Projection: 20 Years")
-fig = go.Figure()
-fig.add_trace(go.Scatter(x=df_sim['Year'], y=df_sim['Sell Scenario (S&P 500)'], mode='lines', name='Sell & Invest', line=dict(color='#00FF00', width=4)))
-fig.add_trace(go.Scatter(x=df_sim['Year'], y=df_sim['Keep Scenario (Home Equity)'], mode='lines', name='Keep Rental', line=dict(color='#0000FF', width=4)))
-fig.update_layout(xaxis_title="Years", yaxis_title="Total Wealth ($)", hovermode="x unified", template="plotly_dark")
-st.plotly_chart(fig, use_container_width=True)
-
-# Future Outlook
-year_20_rent = MONTHLY_RENT_INCOME * (1.02**20)
-year_20_net = year_20_rent - running_monthly_tax - running_monthly_insurance - running_monthly_maintenance
-st.metric("Estimated Monthly Net (Year 20)", f"${year_20_net:,.2f}")
-
-# Cash in Pocket (The "Feel Good" Number)
-monthly_cash_in_pocket = (
-    MONTHLY_RENT_INCOME 
-    - TOTAL_MONTHLY_PITI_PAYMENT 
-    - HELOC_MONTHLY_PAYMENT 
-    - MONTHLY_MAINTENANCE_RESERVE 
-    - MONTHLY_TRAVEL_BURDEN
-)
+    st.metric(
+        label="Cash-Based Wage", 
+        value=f"${honest_cash_wage:,.2f}/hr", 
+        delta=f"{honest_cash_wage - HOURLY_RATE:,.2f} vs Job",
+        help="Your hourly rate based ONLY on spendable cash."
+    )
 
 st.metric("Actual Cash-in-Pocket", f"${monthly_cash_in_pocket:,.2f}", help="This is the actual liquid cash left over each month after ALL bills and reserves are paid.")
