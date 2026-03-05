@@ -34,16 +34,16 @@ ANNUAL_TAX_INCREASE = st.sidebar.slider("Annual Property Tax Increase (%)", 0, 1
 # ==========================================
 # 1. FIXED DATA (RECORDS & LOGISTICS)
 # ==========================================
-MONTHLY_GROSS = 5447.87 #
+MONTHLY_GROSS = 5447.87
 MANDATORY_DEDUCTIONS = 1644.63
 TSP_LOAN_PAYMENT = 469.89
 TSP_LOAN_BALANCE = 16000
-HOURLY_RATE = 31.43 #
+HOURLY_RATE = 31.43
 
 HVAC_BALANCE = 9000.00
 HVAC_MONTHLY_PAYMENT = 0.00
 FURNISHMENTS = 6000.00
-MONTHLY_MAINTENANCE_RESERVE = 740.00 #
+MONTHLY_MAINTENANCE_RESERVE = 740.00
 
 # Travel & Labor Logistics
 TRIPS_PER_YEAR = 4
@@ -64,13 +64,99 @@ TOTAL_MONTHLY_PITI_PAYMENT = STARTING_MONTHLY_PRINCIPAL + STARTING_MONTHLY_INTER
 ANNUAL_TRAVEL_COST = ((MILES_ROUND_TRIP * IRS_MILEAGE_RATE) + LODGING_PER_TRIP + MEALS_PER_TRIP) * TRIPS_PER_YEAR
 MONTHLY_TRAVEL_BURDEN = ANNUAL_TRAVEL_COST / 12
 
-# Monthly Labor Value (The cost of your creative time)
+# Monthly Labor Value
 TOTAL_MONTHLY_RENTAL_LABOR_HOURS = ((DRIVE_TIME_PER_TRIP + LABOR_TIME_PER_TRIP) * TRIPS_PER_YEAR / 12) + ADMIN_TIME_PER_MONTH
 monthly_labor_value = TOTAL_MONTHLY_RENTAL_LABOR_HOURS * HOURLY_RATE
 
-# Sell Waterfall (One-time liquidity event)
+# Sell Waterfall
 net_sales_price = ESTIMATED_HOUSE_VALUE * 0.92
 total_profit = net_sales_price - 184500
 cap_gains_portion = max(0, total_profit - 70000)
 total_tax_hit = (70000 * 0.25) + (cap_gains_portion * 0.15)
-final_sp500_seed = net_sales_price - MORTGAGE_BALANCE - HELOC_BALANCE - HVAC_BALANCE - FURN
+
+# FIXED: Ensure variable names match exactly
+final_sp500_seed = net_sales_price - MORTGAGE_BALANCE - HELOC_BALANCE - HVAC_BALANCE - FURNISHMENTS - TSP_LOAN_BALANCE - total_tax_hit - 20000
+
+# Cash Flow Reality Check
+total_house_outflow = TOTAL_MONTHLY_PITI_PAYMENT + HELOC_MONTHLY_PAYMENT + HVAC_MONTHLY_PAYMENT + MONTHLY_MAINTENANCE_RESERVE + MONTHLY_TRAVEL_BURDEN
+actual_monthly_cash_flow = MONTHLY_RENT_INCOME - total_house_outflow
+
+# Independent Life (Selling Scenario)
+independent_costs = 1800.00 + 250.00 + 200.00 
+cash_gap = actual_monthly_cash_flow + independent_costs
+honest_cash_wage = cash_gap / max(0.01, TOTAL_MONTHLY_RENTAL_LABOR_HOURS)
+
+# ==========================================
+# 3. THE 20-YEAR SIMULATION ENGINE
+# ==========================================
+years = 20
+months = years * 12
+data = []
+
+current_sp500_balance = final_sp500_seed
+running_mortgage_balance = MORTGAGE_BALANCE
+running_heloc_balance = HELOC_BALANCE
+running_monthly_tax = STARTING_MONTHLY_TAX
+running_monthly_insurance = STARTING_MONTHLY_INSURANCE
+running_monthly_maintenance = MONTHLY_MAINTENANCE_RESERVE
+monthly_p_and_i = STARTING_MONTHLY_PRINCIPAL + STARTING_MONTHLY_INTEREST
+payoff_year = None
+
+for month in range(1, months + 1):
+    current_sp500_balance *= (1 + SP500_ANNUAL_RETURN)**(1/12)
+    current_sp500_balance += 500.00 
+    
+    if month % 12 == 0:
+        running_monthly_tax *= (1 + ANNUAL_TAX_INCREASE)
+        running_monthly_insurance *= (1 + INFLATION_RATE)
+        running_monthly_maintenance *= (1 + INFLATION_RATE)
+
+    m_interest = running_mortgage_balance * (MORTGAGE_RATE / 12)
+    m_principal = monthly_p_and_i - m_interest
+    running_mortgage_balance = max(0, running_mortgage_balance - m_principal)
+    
+    h_interest = running_heloc_balance * (HELOC_ANNUAL_RATE / 12)
+    h_principal = HELOC_MONTHLY_PAYMENT - h_interest
+    running_heloc_balance = max(0, running_heloc_balance - h_principal)
+    
+    if running_mortgage_balance <= 0 and payoff_year is None:
+        payoff_year = month / 12
+
+    house_value = ESTIMATED_HOUSE_VALUE * (1 + ANNUAL_APPRECIATION_RATE)**(month/12)
+    current_house_equity = house_value - running_heloc_balance
+
+    data.append({
+        "Year": month / 12, 
+        "Sell Scenario (S&P 500)": current_sp500_balance, 
+        "Keep Scenario (Home Equity)": current_house_equity
+    })
+
+df_sim = pd.DataFrame(data)
+
+# ==========================================
+# 4. DASHBOARD DISPLAY
+# ==========================================
+st.title("The Sanity Simulator: Salmon to Boise")
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("Monthly Cash Flow", f"${actual_monthly_cash_flow:,.2f}", help="Negative means you pay out of pocket each month.")
+with col2:
+    st.metric("Spendable Net Gap", f"${cash_gap:,.2f}", help="Your cash flow vs. paying rent in Scenario B.")
+with col3:
+    st.metric("Cash-Based Wage", f"${honest_cash_wage:,.2f}/hr", delta=f"{honest_cash_wage - HOURLY_RATE:,.2f} vs Job")
+
+if payoff_year:
+    st.success(f"🏠 Mortgage Free in {payoff_year:.1f} years.")
+
+st.subheader("Total Wealth Projection: 20 Years")
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=df_sim['Year'], y=df_sim['Sell Scenario (S&P 500)'], mode='lines', name='Sell & Invest', line=dict(color='#00FF00', width=4)))
+fig.add_trace(go.Scatter(x=df_sim['Year'], y=df_sim['Keep Scenario (Home Equity)'], mode='lines', name='Keep Rental', line=dict(color='#0000FF', width=4)))
+fig.update_layout(xaxis_title="Years", yaxis_title="Total Wealth ($)", hovermode="x unified", template="plotly_dark")
+st.plotly_chart(fig, use_container_width=True)
+
+# Future Outlook
+year_20_rent = MONTHLY_RENT_INCOME * (1.02**20)
+year_20_net = year_20_rent - running_monthly_tax - running_monthly_insurance - running_monthly_maintenance
+st.metric("Estimated Monthly Net (Year 20)", f"${year_20_net:,.2f}")
