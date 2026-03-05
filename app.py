@@ -232,3 +232,66 @@ with col3:
         delta=f"{landlord_hourly_wage - HOURLY_RATE:,.2f} vs Job",
         delta_color="normal"
     )
+
+# ==========================================
+# 8. THE 20-YEAR SIMULATION ENGINE
+# ==========================================
+years = 20
+months = years * 12
+data = []
+
+# Initial States
+current_sp500_balance = final_sp500_seed
+current_house_equity = ESTIMATED_HOUSE_VALUE - MORTGAGE_BALANCE
+
+for month in range(1, months + 1):
+    # Scenario: SELL (Grow the S&P 500 Seed)
+    # Monthly growth = (1 + annual_rate)^(1/12)
+    current_sp500_balance *= (1 + SP500_ANNUAL_RETURN)**(1/12)
+    # Adding your monthly investment goal
+    current_sp500_balance += MONTHLY_SP500_GOAL
+    
+    # Scenario: KEEP (Grow House Value + Pay Down Mortgage)
+    # Note: Simplified for now - assumes principal paydown is constant for the chart
+    house_value = ESTIMATED_HOUSE_VALUE * (1 + ANNUAL_APPRECIATION_RATE)**(month/12)
+    # We will refine the mortgage paydown logic in the next iteration
+    estimated_equity = house_value - (MORTGAGE_BALANCE * (1 - (month/months))) 
+    
+    data.append({
+        "Month": month,
+        "Year": month / 12,
+        "Sell Scenario (S&P 500)": current_sp500_balance,
+        "Keep Scenario (Home Equity)": estimated_equity
+    })
+
+df_sim = pd.DataFrame(data)
+
+# ==========================================
+# 9. PLOTTING THE RESULTS
+# ==========================================
+st.subheader("Total Wealth Projection: 20 Years")
+
+fig = go.Figure()
+
+# Add Sell Scenario Line
+fig.add_trace(go.Scatter(
+    x=df_sim['Year'], y=df_sim['Sell Scenario (S&P 500)'],
+    mode='lines', name='Sell & Invest (S&P 500)',
+    line=dict(color='#00FF00', width=4)
+))
+
+# Add Keep Scenario Line
+fig.add_trace(go.Scatter(
+    x=df_sim['Year'], y=df_sim['Keep Scenario (Home Equity)'],
+    mode='lines', name='Keep Rental (Home Equity)',
+    line=dict(color='#0000FF', width=4)
+))
+
+fig.update_layout(
+    xaxis_title="Years",
+    yaxis_title="Total Wealth ($)",
+    hovermode="x unified",
+    template="plotly_dark"
+)
+
+st.plotly_chart(fig, use_container_width=True)
