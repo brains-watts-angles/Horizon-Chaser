@@ -68,10 +68,28 @@ net_sales_price = ESTIMATED_HOUSE_VALUE * 0.92
 total_tax_hit = ((net_sales_price - 184500 - 70000) * 0.15) + (70000 * 0.25)
 final_sp500_seed = net_sales_price - MORTGAGE_BALANCE - HELOC_BALANCE - HVAC_BALANCE - FURNISHMENTS - TSP_LOAN_BALANCE - total_tax_hit - 20000
 
-# Scenarios
-current_monthly_net = (MONTHLY_GROSS - MANDATORY_DEDUCTIONS - TSP_LOAN_PAYMENT - HELOC_MONTHLY_PAYMENT - HVAC_MONTHLY_PAYMENT - TOTAL_MONTHLY_PITI_PAYMENT - MONTHLY_MAINTENANCE_RESERVE - MONTHLY_TRAVEL_BURDEN - monthly_labor_value + MONTHLY_RENT_INCOME)
-independent_monthly_net = (MONTHLY_GROSS - MANDATORY_DEDUCTIONS - 1800.00 - 250.00 - 200.00)
-landlord_hourly_wage = (current_monthly_net - independent_monthly_net) / max(0.01, TOTAL_MONTHLY_RENTAL_LABOR_HOURS)
+# --- THE REALITY CHECK LOGIC ---
+
+# 1. Total Monthly Outflow (Cash leaving your pocket)
+total_monthly_outflow = (
+    MANDATORY_DEDUCTIONS + 
+    TSP_LOAN_PAYMENT + 
+    HELOC_MONTHLY_PAYMENT + 
+    HVAC_MONTHLY_PAYMENT + 
+    TOTAL_MONTHLY_PITI_PAYMENT + 
+    MONTHLY_MAINTENANCE_RESERVE + 
+    MONTHLY_TRAVEL_BURDEN
+)
+
+# 2. Cash-in-Pocket (Liquid Cash)
+# This is what you actually FEEL in Salmon [cite: 2026-03-04]
+cash_in_pocket_keep = (MONTHLY_GROSS + MONTHLY_RENT_INCOME) - total_monthly_outflow
+cash_in_pocket_sell = (MONTHLY_GROSS - MANDATORY_DEDUCTIONS - 1800.00 - 250.00 - 200.00)
+
+# 3. The "Honest" Landlord Wage (Cash Profit / Labor Hours)
+# This removes the "Equity" smoke and mirrors
+cash_profit_gap = cash_in_pocket_keep - cash_in_pocket_sell
+landlord_hourly_wage_cash = cash_profit_gap / max(0.01, TOTAL_MONTHLY_RENTAL_LABOR_HOURS)
 
 # ==========================================
 # 3. THE 20-YEAR SIMULATION ENGINE
@@ -132,10 +150,29 @@ df_sim = pd.DataFrame(data)
 # 4. DASHBOARD DISPLAY
 # ==========================================
 st.title("The Sanity Simulator: Salmon to Boise")
+# Replace your current col1, col2, col3 with this:
+st.title("The Sanity Simulator: Salmon to Boise")
 col1, col2, col3 = st.columns(3)
-col1.metric("S&P 500 Seed", f"${final_sp500_seed:,.2f}")
-col2.metric("Monthly Net Gap", f"${(current_monthly_net - independent_monthly_net):,.2f}")
-col3.metric("Landlord Hourly Wage", f"${landlord_hourly_wage:,.2f}/hr", delta=f"{landlord_hourly_wage - HOURLY_RATE:,.2f} vs Job")
+
+with col1:
+    st.metric("S&P 500 Seed", f"${final_sp500_seed:,.2f}")
+
+with col2:
+    # This now shows actual spendable cash difference
+    st.metric(
+        "Monthly Cash-in-Pocket Gap", 
+        f"${cash_profit_gap:,.2f}",
+        help="How much more (or less) spendable cash you have each month by keeping the rental."
+    )
+
+with col3:
+    # This is the 'Honest' wage
+    st.metric(
+        "Cash-Based Landlord Wage", 
+        f"${landlord_hourly_wage_cash:,.2f}/hr", 
+        delta=f"{landlord_hourly_wage_cash - HOURLY_RATE:,.2f} vs Job",
+        help="Your hourly rate based ONLY on spendable cash, not home equity."
+    )
 
 if payoff_year: st.success(f"🏠 Mortgage Free in {payoff_year:.1f} years.")
 
@@ -150,3 +187,14 @@ st.plotly_chart(fig, use_container_width=True)
 year_20_rent = MONTHLY_RENT_INCOME * (1.02**20)
 year_20_net = year_20_rent - running_monthly_tax - running_monthly_insurance - running_monthly_maintenance
 st.metric("Estimated Monthly Net (Year 20)", f"${year_20_net:,.2f}")
+
+# Cash in Pocket (The "Feel Good" Number)
+monthly_cash_in_pocket = (
+    MONTHLY_RENT_INCOME 
+    - TOTAL_MONTHLY_PITI_PAYMENT 
+    - HELOC_MONTHLY_PAYMENT 
+    - MONTHLY_MAINTENANCE_RESERVE 
+    - MONTHLY_TRAVEL_BURDEN
+)
+
+st.metric("Actual Cash-in-Pocket", f"${monthly_cash_in_pocket:,.2f}", help="This is the actual liquid cash left over each month after ALL bills and reserves are paid.")
