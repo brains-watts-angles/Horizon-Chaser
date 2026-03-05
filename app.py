@@ -261,7 +261,7 @@ for month in range(1, months + 1):
     principal_this_month = monthly_p_and_i - interest_this_month
     
     # 3. Update the mortgage balance for next month
-    running_mortgage_balance -= principal_this_month
+    running_mortgage_balance = max(0, running_mortgage_balance - principal_this_month)
     
     # 4. Calculate Total Wealth (House Value - Remaining Mortgage)
     house_value = ESTIMATED_HOUSE_VALUE * (1 + ANNUAL_APPRECIATION_RATE)**(month/12)
@@ -271,7 +271,7 @@ for month in range(1, months + 1):
         "Month": month,
         "Year": month / 12,
         "Sell Scenario (S&P 500)": current_sp500_balance,
-        "Keep Scenario (Home Equity)": estimated_equity
+        "Keep Scenario (Home Equity)": current_house_equity
     })
 
 df_sim = pd.DataFrame(data)
