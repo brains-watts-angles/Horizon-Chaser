@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 
+
+
 # ==========================================
 # 1. INCOME & PAYCHECK
 # ==========================================
@@ -15,12 +17,19 @@ TSP_CONTRIBUTION = 272.39
 # 2. THE RENTAL (KEEP SCENARIO)
 # ==========================================
 
+st.sidebar.header("🏠 Rental Property Settings")
 # Market Growth and Equity
-ESTIMATED_HOUSE_VALUE = 350000.00
+ESTIMATED_HOUSE_VALUE = st.sidebar.slider(
+    "Current House Value ($)", 
+    min_value=250000, max_value=500000, value=350000, step=5000
+)
 ANNUAL_APPRECIATION_RATE = 0.03 # 3% growth in home value
 
 # Income & Maintenance
-MONTHLY_RENT_INCOME = 2300.00
+MONTHLY_RENT_INCOME = st.sidebar.slider(
+    "Monthly Rent ($)", 
+    min_value=1500, max_value=3500, value=2300, step=50
+)
 ANNUAL_RENT_INCREASE = 0.02     # 2% growth in rent prices
 
 # Expenses
@@ -58,10 +67,11 @@ MORTGAGE_RATE = 0.0325
 
 # Starting PITI Breakdown (Found on your statement)
 # Separating these allows us to track 'Asset Growth' vs 'Pure Expense'
-STARTING_MONTHLY_PRINCIPAL = 0.00  # Asset Building
-STARTING_MONTHLY_INTEREST = 0.00   # Pure Cost (The "Burn")
-STARTING_MONTHLY_TAX = 0.00        # Pure Cost
-STARTING_MONTHLY_INSURANCE = 0.00  # Pure Cost
+st.sidebar.header("💳 Debt & PITI")
+STARTING_MONTHLY_PRINCIPAL = st.sidebar.number_input("Monthly Principal ($)", value=350.0)
+STARTING_MONTHLY_INTEREST = st.sidebar.number_input("Monthly Interest ($)", value=380.0)
+STARTING_MONTHLY_TAX = st.sidebar.number_input("Monthly Tax ($)", value=250.0)
+STARTING_MONTHLY_INSURANCE = st.sidebar.number_input("Monthly Insurance ($)", value=120.0)
 
 # Derived Variable for the Monthly Budget
 TOTAL_MONTHLY_PITI_PAYMENT = (
@@ -76,7 +86,7 @@ TOTAL_MONTHLY_PITI_PAYMENT = (
 
 
 # HELOC: High interest
-HELOC_BALANCE = 40000.00
+HELOC_BALANCE = st.sidebar.number_input("HELOC Balance ($)", value=40000.0)
 HELOC_ANNUAL_RATE = 0.0825      # placeholder for ~8%
 HELOC_MONTHLY_PAYMENT = 591.00 
 
@@ -193,5 +203,32 @@ monthly_profit_gap = current_monthly_net - independent_monthly_net
 # Using the new total hours including the drive from Salmon
 landlord_hourly_wage = monthly_profit_gap / max(0.01, TOTAL_MONTHLY_RENTAL_LABOR_HOURS)
 
-####Sample code below this line####
+# ==========================================
+# MAIN DASHBOARD DISPLAY
+# ==========================================
+st.title("The Sanity Simulator: Salmon to Boise")
 
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.metric(
+        label="S&P 500 Starting Seed", 
+        value=f"${final_sp500_seed:,.2f}"
+    )
+
+with col2:
+    # We calculate the delta (the difference) between Scenarios
+    gap = current_monthly_net - independent_monthly_net
+    st.metric(
+        label="Monthly Net Gap", 
+        value=f"${gap:,.2f}",
+        delta=f"${gap:,.2f}"
+    )
+
+with col3:
+    st.metric(
+        label="Landlord Hourly Wage", 
+        value=f"${landlord_hourly_wage:,.2f}/hr",
+        delta=f"{landlord_hourly_wage - HOURLY_RATE:,.2f} vs Job",
+        delta_color="normal"
+    )
