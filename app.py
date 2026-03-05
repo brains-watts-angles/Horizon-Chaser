@@ -265,6 +265,18 @@ for month in range(1, months + 1):
     # 4. Calculate Total Wealth (House Value - Remaining Mortgage)
     house_value = ESTIMATED_HOUSE_VALUE * (1 + ANNUAL_APPRECIATION_RATE)**(month/12)
     current_house_equity = house_value - running_mortgage_balance
+
+    payoff_year = None
+    
+    # Check if the mortgage is dead
+    if running_mortgage_balance <= 0 and payoff_year is None:
+        payoff_year = month / 12
+
+# Then, display it under the graph:
+if payoff_year:
+    st.success(f"🏠 You will own the house outright in {payoff_year:.1f} years.")
+else:
+    st.info("🏠 At this rate, the mortgage will take longer than 20 years to pay off.")
     
     data.append({
         "Month": month,
@@ -273,7 +285,47 @@ for month in range(1, months + 1):
         "Keep Scenario (Home Equity)": current_house_equity
     })
 
+# Create a running tax variable
+running_monthly_tax = STARTING_MONTHLY_TAX
+
+for month in range(1, months + 1):
+    # --- 1. S&P 500 GROWTH ---
+    # Now uses the slider value
+    current_sp500_balance *= (1 + SP500_ANNUAL_RETURN)**(1/12)
+    current_sp500_balance += MONTHLY_SP500_GOAL
+    
+    # --- 2. THE TAX CREEP ---
+    # Every 12 months, bump the tax up
+    if month % 12 == 0:
+        running_monthly_tax *= (1 + ANNUAL_TAX_INCREASE)
+
+    # --- 3. AMORTIZATION ---
+    interest_this_month = running_mortgage_balance * (MORTGAGE_RATE / 12)
+    principal_this_month = monthly_p_and_i - interest_this_month
+    running_mortgage_balance = max(0, running_mortgage_balance - principal_this_month)
+    
+    # --- 4. HOUSE VALUE ---
+    house_value = ESTIMATED_HOUSE_VALUE * (1 + ANNUAL_APPRECIATION_RATE)**(month/12)
+    
+    # TOTAL WEALTH (Keep)
+    # We subtract the mortgage AND we'll track how tax affects your cash flow
+    current_house_equity = house_value - running_mortgage_balance
+
 df_sim = pd.DataFrame(data)
+
+st.sidebar.header("📈 Market & Tax Trends")
+
+# S&P 500 Variable
+SP500_ANNUAL_RETURN = st.sidebar.slider(
+    "S&P 500 Annual Return (%)", 
+    min_value=1, max_value=15, value=10
+) / 100  # Divide by 100 to make 10% -> 0.10
+
+# Tax Creep Variable
+ANNUAL_TAX_INCREASE = st.sidebar.slider(
+    "Annual Property Tax Increase (%)", 
+    min_value=0, max_value=10, value=3
+) / 100
 
 # ==========================================
 # 9. PLOTTING THE RESULTS
