@@ -91,6 +91,27 @@ cash_in_pocket_sell = (MONTHLY_GROSS - MANDATORY_DEDUCTIONS - 1800.00 - 250.00 -
 cash_profit_gap = cash_in_pocket_keep - cash_in_pocket_sell
 landlord_hourly_wage_cash = cash_profit_gap / max(0.01, TOTAL_MONTHLY_RENTAL_LABOR_HOURS)
 
+# --- THE TRUTH CALCULATIONS ---
+
+# 1. Total Cash Outflow (Everything that leaves your bank account)
+# We include the HELOC and the PITI, plus your Salmon travel/maintenance
+total_monthly_outflow = (
+    TOTAL_MONTHLY_PITI_PAYMENT + 
+    HELOC_MONTHLY_PAYMENT + 
+    HVAC_MONTHLY_PAYMENT + 
+    MONTHLY_MAINTENANCE_RESERVE + 
+    MONTHLY_TRAVEL_BURDEN
+)
+
+# 2. Monthly Cash Flow (Rent minus Outflow)
+# This should match your $-309.33 finding
+actual_monthly_cash_flow = MONTHLY_RENT_INCOME - total_monthly_outflow
+
+# 3. The "Honest" Landlord Wage
+# We compare your 'Rental Life' Cash to your 'Independent Life' Cash
+cash_gap = actual_monthly_cash_flow - (-2250.00) # Your Independence costs (Rent/Utils/Food)
+honest_cash_wage = cash_gap / max(0.01, TOTAL_MONTHLY_RENTAL_LABOR_HOURS)
+
 # ==========================================
 # 3. THE 20-YEAR SIMULATION ENGINE
 # ==========================================
@@ -150,28 +171,20 @@ df_sim = pd.DataFrame(data)
 # 4. DASHBOARD DISPLAY
 # ==========================================
 st.title("The Sanity Simulator: Salmon to Boise")
-# Replace your current col1, col2, col3 with this:
-st.title("The Sanity Simulator: Salmon to Boise")
+
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.metric("S&P 500 Seed", f"${final_sp500_seed:,.2f}")
+    st.metric("Monthly Cash Flow", f"${actual_monthly_cash_flow:,.2f}", 
+              help="Pure cash left after ALL house expenses. Negative means you're feeding the house.")
 
 with col2:
-    # This now shows actual spendable cash difference
-    st.metric(
-        "Monthly Cash-in-Pocket Gap", 
-        f"${cash_profit_gap:,.2f}",
-        help="How much more (or less) spendable cash you have each month by keeping the rental."
-    )
+    st.metric("Total Monthly Net Gap", f"${cash_gap:,.2f}",
+              help="The difference in spendable cash between keeping the house and selling it.")
 
 with col3:
-    # This is the 'Honest' wage
-    st.metric(
-        "Cash-Based Landlord Wage", 
-        f"${landlord_hourly_wage_cash:,.2f}/hr", 
-        delta=f"{landlord_hourly_wage_cash - HOURLY_RATE:,.2f} vs Job",
-        help="Your hourly rate based ONLY on spendable cash, not home equity."
+    st.metric("Cash-Based Wage", f"${honest_cash_wage:,.2f}/hr", 
+              delta=f"{honest_cash_wage - HOURLY_RATE:,.2f} vs Job")
     )
 
 if payoff_year: st.success(f"🏠 Mortgage Free in {payoff_year:.1f} years.")
