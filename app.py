@@ -244,18 +244,28 @@ data = []
 current_sp500_balance = final_sp500_seed
 current_house_equity = ESTIMATED_HOUSE_VALUE - MORTGAGE_BALANCE
 
+running_mortgage_balance = MORTGAGE_BALANCE
+monthly_p_and_i = STARTING_MONTHLY_PRINCIPAL + STARTING_MONTHLY_INTEREST
+
 for month in range(1, months + 1):
-    # Scenario: SELL (Grow the S&P 500 Seed)
-    # Monthly growth = (1 + annual_rate)^(1/12)
+    # --- SELL SCENARIO (S&P 500) ---
     current_sp500_balance *= (1 + SP500_ANNUAL_RETURN)**(1/12)
-    # Adding your monthly investment goal
     current_sp500_balance += MONTHLY_SP500_GOAL
     
-    # Scenario: KEEP (Grow House Value + Pay Down Mortgage)
-    # Note: Simplified for now - assumes principal paydown is constant for the chart
+    # --- KEEP SCENARIO (The Boise House) ---
+    # 1. Calculate this month's interest "burn"
+    interest_this_month = running_mortgage_balance * (MORTGAGE_RATE / 12)
+    
+    # 2. Calculate how much actually goes to the Principal
+    # (The bank takes the interest first, you get what's left)
+    principal_this_month = monthly_p_and_i - interest_this_month
+    
+    # 3. Update the mortgage balance for next month
+    running_mortgage_balance -= principal_this_month
+    
+    # 4. Calculate Total Wealth (House Value - Remaining Mortgage)
     house_value = ESTIMATED_HOUSE_VALUE * (1 + ANNUAL_APPRECIATION_RATE)**(month/12)
-    # We will refine the mortgage paydown logic in the next iteration
-    estimated_equity = house_value - (MORTGAGE_BALANCE * (1 - (month/months))) 
+    current_house_equity = house_value - running_mortgage_balance
     
     data.append({
         "Month": month,
