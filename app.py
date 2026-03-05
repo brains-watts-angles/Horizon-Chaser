@@ -108,6 +108,23 @@ for month in range(1, months + 1):
 
     house_value = ESTIMATED_HOUSE_VALUE * (1 + ANNUAL_APPRECIATION_RATE)**(month/12)
     current_house_equity = house_value - running_mortgage_balance
+
+    # Inside your 'for month in range(1, months + 1):' loop:
+
+# 1. HELOC Amortization (New!)
+heloc_interest = running_heloc_balance * (HELOC_ANNUAL_RATE / 12)
+heloc_principal = HELOC_MONTHLY_PAYMENT - heloc_interest
+running_heloc_balance = max(0, running_heloc_balance - heloc_principal)
+
+# 2. Insurance & Maintenance Creep (New!)
+# We inflate these by the 3% inflation rate every year
+if month % 12 == 0:
+    running_monthly_insurance *= (1 + INFLATION_RATE)
+    running_monthly_maintenance *= (1 + INFLATION_RATE)
+
+# 3. Updated Total Equity Calculation
+# Equity = House Value - Mortgage Balance - HELOC Balance
+current_house_equity = house_value - running_mortgage_balance - running_heloc_balance
     
     data.append({"Year": month / 12, "Sell Scenario (S&P 500)": current_sp500_balance, "Keep Scenario (Home Equity)": current_house_equity})
 
