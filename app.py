@@ -241,9 +241,8 @@ months = years * 12
 data = []
 
 # Initial States
+# These must be OUTSIDE (above) the 'for' loop:
 current_sp500_balance = final_sp500_seed
-current_house_equity = ESTIMATED_HOUSE_VALUE - MORTGAGE_BALANCE
-
 running_mortgage_balance = MORTGAGE_BALANCE
 monthly_p_and_i = STARTING_MONTHLY_PRINCIPAL + STARTING_MONTHLY_INTEREST
 
