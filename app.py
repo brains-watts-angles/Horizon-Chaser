@@ -59,43 +59,20 @@ ADMIN_TIME_PER_MONTH = 3.0 # [cite: 2026-03-04]
 # ==========================================
 TOTAL_MONTHLY_PITI_PAYMENT = STARTING_MONTHLY_PRINCIPAL + STARTING_MONTHLY_INTEREST + STARTING_MONTHLY_TAX + STARTING_MONTHLY_INSURANCE
 
+# Travel & Labor Costs [cite: 2026-03-04]
 ANNUAL_TRAVEL_COST = ((MILES_ROUND_TRIP * IRS_MILEAGE_RATE) + LODGING_PER_TRIP + MEALS_PER_TRIP) * TRIPS_PER_YEAR
 MONTHLY_TRAVEL_BURDEN = ANNUAL_TRAVEL_COST / 12
-TOTAL_MONTHLY_RENTAL_LABOR_HOURS = ((DRIVE_TIME_PER_TRIP + LABOR_TIME_PER_TRIP) * TRIPS_PER_YEAR / 12) + ADMIN_TIME_PER_MONTH # [cite: 2026-03-04]
+TOTAL_MONTHLY_RENTAL_LABOR_HOURS = ((DRIVE_TIME_PER_TRIP + LABOR_TIME_PER_TRIP) * TRIPS_PER_YEAR / 12) + ADMIN_TIME_PER_MONTH
 monthly_labor_value = TOTAL_MONTHLY_RENTAL_LABOR_HOURS * HOURLY_RATE
 
+# Sell Waterfall Logic
 net_sales_price = ESTIMATED_HOUSE_VALUE * 0.92
 total_tax_hit = ((net_sales_price - 184500 - 70000) * 0.15) + (70000 * 0.25)
 final_sp500_seed = net_sales_price - MORTGAGE_BALANCE - HELOC_BALANCE - HVAC_BALANCE - FURNISHMENTS - TSP_LOAN_BALANCE - total_tax_hit - 20000
 
-# --- THE REALITY CHECK LOGIC ---
-
-# 1. Total Monthly Outflow (Cash leaving your pocket)
-total_monthly_outflow = (
-    MANDATORY_DEDUCTIONS + 
-    TSP_LOAN_PAYMENT + 
-    HELOC_MONTHLY_PAYMENT + 
-    HVAC_MONTHLY_PAYMENT + 
-    TOTAL_MONTHLY_PITI_PAYMENT + 
-    MONTHLY_MAINTENANCE_RESERVE + 
-    MONTHLY_TRAVEL_BURDEN
-)
-
-# 2. Cash-in-Pocket (Liquid Cash)
-# This is what you actually FEEL in Salmon [cite: 2026-03-04]
-cash_in_pocket_keep = (MONTHLY_GROSS + MONTHLY_RENT_INCOME) - total_monthly_outflow
-cash_in_pocket_sell = (MONTHLY_GROSS - MANDATORY_DEDUCTIONS - 1800.00 - 250.00 - 200.00)
-
-# 3. The "Honest" Landlord Wage (Cash Profit / Labor Hours)
-# This removes the "Equity" smoke and mirrors
-cash_profit_gap = cash_in_pocket_keep - cash_in_pocket_sell
-landlord_hourly_wage_cash = cash_profit_gap / max(0.01, TOTAL_MONTHLY_RENTAL_LABOR_HOURS)
-
-# --- THE TRUTH CALCULATIONS ---
-
-# 1. Total Cash Outflow (Everything that leaves your bank account)
-# We include the HELOC and the PITI, plus your Salmon travel/maintenance
-total_monthly_outflow = (
+# --- THE REALITY CHECK (CASH FLOW) ---
+# This is what leaves your bank account every month
+total_house_outflow = (
     TOTAL_MONTHLY_PITI_PAYMENT + 
     HELOC_MONTHLY_PAYMENT + 
     HVAC_MONTHLY_PAYMENT + 
@@ -103,13 +80,16 @@ total_monthly_outflow = (
     MONTHLY_TRAVEL_BURDEN
 )
 
-# 2. Monthly Cash Flow (Rent minus Outflow)
-# This should match your $-309.33 finding
-actual_monthly_cash_flow = MONTHLY_RENT_INCOME - total_monthly_outflow
+# Spendable Cash Flow (The -$-309.33 you saw)
+actual_monthly_cash_flow = MONTHLY_RENT_INCOME - total_house_outflow
 
-# 3. The "Honest" Landlord Wage
-# We compare your 'Rental Life' Cash to your 'Independent Life' Cash
-cash_gap = actual_monthly_cash_flow - (-2250.00) # Your Independence costs (Rent/Utils/Food)
+# Independent Life Cost [cite: 2026-02-24]
+# (Rent + Utilities + Food Surplus)
+independent_costs = 1800.00 + 250.00 + 200.00
+
+# The "Honest" Wage
+# Difference between (Job + Rental Cash) and (Job - Independent Life)
+cash_gap = actual_monthly_cash_flow + independent_costs
 honest_cash_wage = cash_gap / max(0.01, TOTAL_MONTHLY_RENTAL_LABOR_HOURS)
 
 # ==========================================
@@ -171,21 +151,19 @@ df_sim = pd.DataFrame(data)
 # 4. DASHBOARD DISPLAY
 # ==========================================
 st.title("The Sanity Simulator: Salmon to Boise")
-
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.metric("Monthly Cash Flow", f"${actual_monthly_cash_flow:,.2f}", 
-              help="Pure cash left after ALL house expenses. Negative means you're feeding the house.")
+    st.metric("Actual Cash Flow", f"${actual_monthly_cash_flow:,.2f}", 
+              help="Liquid cash left after ALL house expenses and travel.")
 
 with col2:
-    st.metric("Total Monthly Net Gap", f"${cash_gap:,.2f}",
-              help="The difference in spendable cash between keeping the house and selling it.")
+    st.metric("Monthly Net Gap", f"${cash_gap:,.2f}",
+              help="Difference in spendable cash between keeping and selling.")
 
 with col3:
     st.metric("Cash-Based Wage", f"${honest_cash_wage:,.2f}/hr", 
               delta=f"{honest_cash_wage - HOURLY_RATE:,.2f} vs Job")
-    )
 
 if payoff_year: st.success(f"🏠 Mortgage Free in {payoff_year:.1f} years.")
 
